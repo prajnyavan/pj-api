@@ -15,7 +15,7 @@ from verifier.verify_patch import verify_candidate_trace
 
 
 def run_step(args: list[str]) -> None:
-    print("$", " ".join(args))
+    print("$", " ".join(args), flush=True)
     subprocess.run(args, check=True)
 
 
@@ -32,6 +32,7 @@ def main() -> None:
     parser.add_argument("--target-tasks", type=int, default=20)
     parser.add_argument("--target-verified", type=int, default=3)
     parser.add_argument("--max-attempts", type=int, default=10)
+    parser.add_argument("--problem-batch-size", type=int, default=2)
     parser.add_argument("--ollama-url", default="http://127.0.0.1:11434")
     parser.add_argument("--traces-dir", type=Path, default=Path("traces"))
     parser.add_argument("--scorecard", type=Path, default=Path("scorecard.json"))
@@ -55,6 +56,8 @@ def main() -> None:
             str(raw),
             "--ollama-url",
             args.ollama_url,
+            "--batch-size",
+            str(args.problem_batch_size),
         ])
     if count_rows(refined) < args.target_refined:
         run_step([

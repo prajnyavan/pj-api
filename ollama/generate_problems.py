@@ -24,6 +24,36 @@ def normalize_row(row: dict, index: int) -> dict:
     return row
 
 
+def generate_batch(args: argparse.Namespace, system: str, start: int, batch_size: int) -> list[dict]:
+    prompt = (
+        f"Generate {batch_size} diverse raw problem ideas. "
+        f"Use problem ids raw-fastapi-{start:06d} through raw-fastapi-{start + batch_size - 1:06d}."
+    )
+    last_error: Exception | None = None
+    for _attempt in range(1, args.retries + 1):
+        response = generate(
+            model=args.model,
+            system=system,
+            prompt=prompt,
+            base_url=args.ollama_url,
+            temperature=args.temperature,
+        )
+        try:
+            batch = parse_json_array(response)
+        except ValueError as exc:
+            last_error = exc
+            prompt = (
+                "Your previous response was not valid JSON. "
+                "Return only a JSON array of problem objects. No markdown, no prose.\n\n"
+                + prompt
+            )
+            continue
+        if batch:
+            return batch
+        last_error = RuntimeError("Ollama returned an empty problem batch")
+    raise RuntimeError(f"failed to generate valid problem batch after {args.retries} attempts: {last_error}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate raw pj-api problem ideas with local Ollama.")
     parser.add_argument("--model", required=True)
@@ -31,6 +61,7 @@ def main() -> None:
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--ollama-url", default=DEFAULT_OLLAMA_URL)
     parser.add_argument("--batch-size", type=int, default=20)
+    parser.add_argument("--retries", type=int, default=3)
     parser.add_argument("--temperature", type=float, default=0.7)
     args = parser.parse_args()
 
@@ -39,26 +70,13 @@ def main() -> None:
     while len(rows) < args.count:
         start = len(rows) + 1
         batch_size = min(args.batch_size, args.count - len(rows))
-        prompt = (
-            f"Generate {batch_size} diverse raw problem ideas. "
-            f"Use problem ids raw-fastapi-{start:06d} through raw-fastapi-{start + batch_size - 1:06d}."
-        )
-        response = generate(
-            model=args.model,
-            system=system,
-            prompt=prompt,
-            base_url=args.ollama_url,
-            temperature=args.temperature,
-        )
-        batch = parse_json_array(response)
-        if not batch:
-            raise RuntimeError("Ollama returned an empty problem batch")
+        batch = generate_batch(args, system, start, batch_size)
         for row in batch:
             rows.append(normalize_row(row, len(rows) + 1))
             if len(rows) >= args.count:
                 break
         write_jsonl(args.out, rows)
-        print(f"generated {len(rows)}/{args.count}")
+        print(f"generated {len(rows)}/{args.count}", flush=True)
 
 
 if __name__ == "__main__":
