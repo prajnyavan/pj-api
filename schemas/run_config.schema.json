@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["repo_name", "repo_path", "target_verified", "max_candidates", "worker", "test_command", "build_command", "lint_command"],
+  "properties": {
+    "repo_name": {"type": "string"},
+    "repo_path": {"type": "string"},
+    "target_verified": {"type": "integer", "minimum": 1},
+    "max_candidates": {"type": "integer", "minimum": 1},
+    "max_hours": {"type": "number", "minimum": 0},
+    "worker": {"type": "string"},
+    "test_command": {"type": "string"},
+    "build_command": {"type": "string"},
+    "lint_command": {"type": "string"}
+  }
+}

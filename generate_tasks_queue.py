@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import random
@@ -246,6 +247,152 @@ DOC_TO_CODE_AREAS = [
     ("wire the documented CSV delimiter option into export handling", "Python", "FastAPI", ["docs/exports.md", "app/services/exporter.py"]),
 ]
 
+PJ_API_PILOT_TASKS = [
+    (
+        "bug_fix",
+        "easy",
+        "Fix auth token handling. Actual behavior: an Authorization header without a token is treated like a generic invalid token. "
+        "Expected behavior: `Bearer` with no token should return 401 with detail `Missing authorization token`. "
+        "Existing failing test: `test_bearer_without_token_returns_missing_token`.",
+        ["app/routes/auth.py", "app/services/auth_service.py", "tests/test_auth.py"],
+    ),
+    (
+        "bug_fix",
+        "easy",
+        "Fix auth scheme handling. Actual behavior: `Token valid-token` is accepted when the token text matches. "
+        "Expected behavior: only the Bearer scheme should authenticate. Existing failing test: `test_non_bearer_scheme_returns_401`.",
+        ["app/services/auth_service.py", "tests/test_auth.py"],
+    ),
+    (
+        "bug_fix",
+        "medium",
+        "Fix user creation id allocation. Actual behavior: creating a user after the in-memory store is empty raises `ValueError`. "
+        "Expected behavior: the first created user should receive id 1. Existing failing test: `test_create_user_when_store_is_empty`.",
+        ["app/routes/users.py", "app/db/session.py", "tests/test_users.py"],
+    ),
+    (
+        "bug_fix",
+        "medium",
+        "Fix email normalization. Actual behavior: emails with surrounding spaces are stored with those spaces. "
+        "Expected behavior: user creation should trim email whitespace before storing. Existing failing test: `test_create_user_trims_email_whitespace`.",
+        ["app/schemas/user.py", "tests/test_users.py"],
+    ),
+    (
+        "bug_fix",
+        "easy",
+        "Fix user name normalization. Actual behavior: names with surrounding spaces are returned unchanged. "
+        "Expected behavior: user creation should trim name whitespace before storing. Existing failing test: `test_create_user_trims_name_whitespace`.",
+        ["app/schemas/user.py", "tests/test_users.py"],
+    ),
+    (
+        "bug_fix",
+        "easy",
+        "Fix invalid user id status. Actual behavior: `/users/-1` returns 400 with a generic detail. "
+        "Expected behavior: it should return 422 with detail `User id must be greater than zero`. "
+        "Existing failing test: `test_negative_user_id_returns_validation_error`.",
+        ["app/routes/users.py", "tests/test_users.py"],
+    ),
+    (
+        "bug_fix",
+        "medium",
+        "Fix health response shape. Actual behavior: `/health` omits the service name. "
+        "Expected behavior: the response should include `service: pj-api` while preserving status and version. "
+        "Existing failing test: `test_health_check_includes_service_name`.",
+        ["app/routes/health.py", "tests/test_health.py"],
+    ),
+    (
+        "bug_fix",
+        "medium",
+        "Fix auth error consistency. Actual behavior: missing and invalid credentials return different response shapes after exception handling is customized. "
+        "Expected behavior: both should use FastAPI HTTPException with a string `detail`. Existing failing test: `test_auth_errors_use_string_detail`.",
+        ["app/routes/auth.py", "tests/test_auth.py"],
+    ),
+    (
+        "bug_fix",
+        "medium",
+        "Fix duplicate email handling. Actual behavior: creating a user with an existing email creates a duplicate record. "
+        "Expected behavior: duplicate email should return 409. Existing failing test: `test_create_user_rejects_duplicate_email`.",
+        ["app/routes/users.py", "app/db/session.py", "tests/test_users.py"],
+    ),
+    (
+        "bug_fix",
+        "medium",
+        "Fix case-insensitive email uniqueness. Actual behavior: `Ada@Example.com` and `ada@example.com` are treated as different users. "
+        "Expected behavior: duplicate checks should compare normalized lowercase email values. "
+        "Existing failing test: `test_create_user_rejects_case_insensitive_duplicate_email`.",
+        ["app/routes/users.py", "app/schemas/user.py", "tests/test_users.py"],
+    ),
+    (
+        "test_writing",
+        "easy",
+        "Add focused auth tests for malformed Authorization headers. Target test name: `test_malformed_authorization_header_returns_401`. "
+        "Do not change production behavior unless a tiny fix is required to make the documented auth behavior pass.",
+        ["tests/test_auth.py", "app/routes/auth.py"],
+    ),
+    (
+        "test_writing",
+        "easy",
+        "Add health endpoint tests that assert stable response keys. Target test name: `test_health_response_has_only_expected_keys`. "
+        "Avoid snapshot-style assertions outside this endpoint.",
+        ["tests/test_health.py", "app/routes/health.py"],
+    ),
+    (
+        "test_writing",
+        "medium",
+        "Add user creation validation tests for empty name and invalid email format. "
+        "Target tests: `test_empty_name_returns_422` and `test_invalid_email_returns_422`.",
+        ["tests/test_users.py", "app/schemas/user.py"],
+    ),
+    (
+        "test_writing",
+        "medium",
+        "Add tests proving unknown users return 404 without mutating the in-memory user store. "
+        "Target test name: `test_missing_user_does_not_mutate_store`.",
+        ["tests/test_users.py", "app/db/session.py"],
+    ),
+    (
+        "refactor",
+        "medium",
+        "Refactor auth validation so parsing the Authorization header is isolated in `auth_service.py`. "
+        "Keep endpoint behavior unchanged and keep all existing tests passing.",
+        ["app/routes/auth.py", "app/services/auth_service.py", "tests/test_auth.py"],
+    ),
+    (
+        "refactor",
+        "medium",
+        "Refactor user lookup into a small helper in `users.py` to remove repeated HTTPException construction. "
+        "Keep route paths, status codes, and response models unchanged.",
+        ["app/routes/users.py", "tests/test_users.py"],
+    ),
+    (
+        "refactor",
+        "easy",
+        "Refactor health metadata so the API version is defined once and reused by `app/main.py` and the health route. "
+        "Keep `/health` response unchanged.",
+        ["app/main.py", "app/routes/health.py", "tests/test_health.py"],
+    ),
+    (
+        "typing_lint_build",
+        "easy",
+        "Resolve strict typing for the in-memory user store by introducing a shared type alias. Do not change runtime behavior.",
+        ["app/db/session.py", "app/routes/users.py"],
+    ),
+    (
+        "typing_lint_build",
+        "easy",
+        "Tighten the auth service return path so ruff and type checkers see one clear boolean expression for valid Bearer tokens. "
+        "Do not change accepted credentials.",
+        ["app/services/auth_service.py", "tests/test_auth.py"],
+    ),
+    (
+        "documentation_to_code",
+        "medium",
+        "Bring README API documentation in line with implementation by documenting `/health`, `/auth/validate`, and `/users/{user_id}` "
+        "with expected status codes. Do not include solved patches in the task record.",
+        ["README.md", "app/routes/health.py", "app/routes/auth.py"],
+    ),
+]
+
 
 def bug_description(domain: str, area: str) -> str:
     failures = REACT_FAILURES if domain == "react" else FASTAPI_FAILURES
@@ -314,6 +461,63 @@ def make_task(
         "lint_command": lint_command,
         "constraints": constraints_for(task_type, expected_files, rng),
     }
+
+
+def make_grounded_task(
+    index: int,
+    repo_name: str,
+    repo_path: str,
+    base_commit: str,
+    task_type: str,
+    difficulty: str,
+    description: str,
+    expected_files: list[str],
+) -> dict[str, Any]:
+    return {
+        "task_id": f"{repo_name}-{index:04d}",
+        "repo_name": repo_name,
+        "repo_path": repo_path,
+        "base_commit": base_commit,
+        "task_type": task_type,
+        "language": "Python",
+        "framework": "FastAPI",
+        "difficulty": difficulty,
+        "description": description,
+        "expected_files": expected_files,
+        "test_command": "pytest",
+        "build_command": "python -m compileall app",
+        "lint_command": "ruff check .",
+        "constraints": {
+            "candidate_only": True,
+            "no_patch_in_task": True,
+            "no_fake_test_results": True,
+            "independent_verifier_required": True,
+            "allow_new_dependencies": False,
+            "max_expected_files": 3,
+            "keep_scope_small": True,
+        },
+    }
+
+
+def generate_pj_api_tasks(base_commit: str, count: int, repo_path: str) -> list[dict[str, Any]]:
+    if count < 1 or count > len(PJ_API_PILOT_TASKS):
+        raise ValueError(f"pj-api grounded mode supports 1 to {len(PJ_API_PILOT_TASKS)} tasks")
+
+    tasks = []
+    for index, (task_type, difficulty, description, expected_files) in enumerate(PJ_API_PILOT_TASKS[:count], start=1):
+        tasks.append(
+            make_grounded_task(
+                index=index,
+                repo_name="pj-api",
+                repo_path=repo_path,
+                base_commit=base_commit,
+                task_type=task_type,
+                difficulty=difficulty,
+                description=description,
+                expected_files=expected_files,
+            )
+        )
+    return tasks
 
 
 def generate_tasks() -> list[dict[str, Any]]:
@@ -419,18 +623,55 @@ def validate_tasks(tasks: list[dict[str, Any]]) -> None:
         raise ValueError(f"Category counts mismatch: {type_counts}")
 
 
-def write_jsonl(tasks: list[dict[str, Any]]) -> None:
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with OUTPUT_PATH.open("w", encoding="utf-8") as file:
+def validate_task_shape(tasks: list[dict[str, Any]], expected_count: int) -> None:
+    if len(tasks) != expected_count:
+        raise ValueError(f"Expected {expected_count} tasks, generated {len(tasks)}")
+
+    seen_ids: set[str] = set()
+    for task in tasks:
+        missing = [field for field in REQUIRED_FIELDS if field not in task]
+        if missing:
+            raise ValueError(f"{task.get('task_id', '<unknown>')} missing fields: {missing}")
+        if task["task_id"] in seen_ids:
+            raise ValueError(f"Duplicate task_id: {task['task_id']}")
+        seen_ids.add(task["task_id"])
+        if not isinstance(task["expected_files"], list) or not 1 <= len(task["expected_files"]) <= task["constraints"]["max_expected_files"]:
+            raise ValueError(f"{task['task_id']} expected_files exceeds max_expected_files")
+        if any(forbidden in task for forbidden in ("patch", "solution", "dataset_ready", "test_results")):
+            raise ValueError(f"{task['task_id']} contains a forbidden solved-data field")
+
+
+def write_jsonl(tasks: list[dict[str, Any]], output_path: Path) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as file:
         for task in tasks:
             file.write(json.dumps(task, sort_keys=True, separators=(",", ":")) + "\n")
 
 
 def main() -> None:
-    tasks = generate_tasks()
-    validate_tasks(tasks)
-    write_jsonl(tasks)
-    print(f"Wrote {len(tasks)} tasks to {OUTPUT_PATH}")
+    parser = argparse.ArgumentParser(description="Generate SKB Coding Data Factory candidate task queues.")
+    parser.add_argument("--repo", choices=["pj-api"], help="Generate a grounded repo-specific queue.")
+    parser.add_argument("--base-commit", help="Real base commit SHA for grounded repo mode.")
+    parser.add_argument("--count", type=int, default=20, help="Number of grounded tasks to generate.")
+    parser.add_argument("--repo-path", help="Repo path to write into each grounded task.")
+    parser.add_argument("--output", type=Path, help="Output JSONL path.")
+    args = parser.parse_args()
+
+    if args.repo == "pj-api":
+        if not args.base_commit:
+            raise SystemExit("--base-commit is required for grounded repo mode")
+        repo_path = args.repo_path or "repos/pj-api"
+        output_path = args.output or Path("tasks/pilot_20.jsonl")
+        tasks = generate_pj_api_tasks(args.base_commit, args.count, repo_path)
+        validate_task_shape(tasks, args.count)
+        write_jsonl(tasks, output_path)
+    else:
+        output_path = args.output or OUTPUT_PATH
+        tasks = generate_tasks()
+        validate_tasks(tasks)
+        write_jsonl(tasks, output_path)
+
+    print(f"Wrote {len(tasks)} tasks to {output_path}")
 
 
 if __name__ == "__main__":

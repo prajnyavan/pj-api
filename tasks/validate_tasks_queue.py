@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import subprocess
 from pathlib import Path
@@ -38,14 +39,18 @@ def commit_exists(repo_path: Path, commit: str) -> bool:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Validate a candidate task queue against local repos.")
+    parser.add_argument("--queue", type=Path, default=QUEUE, help="JSONL queue to validate.")
+    args = parser.parse_args()
+
     errors: list[str] = []
     seen: set[str] = set()
 
-    if not QUEUE.exists():
-        print(f"valid: no\n - queue file does not exist: {QUEUE}")
+    if not args.queue.exists():
+        print(f"valid: no\n - queue file does not exist: {args.queue}")
         return 1
 
-    for line_no, line in enumerate(QUEUE.read_text(encoding="utf-8").splitlines(), start=1):
+    for line_no, line in enumerate(args.queue.read_text(encoding="utf-8").splitlines(), start=1):
         try:
             task = json.loads(line)
         except json.JSONDecodeError as exc:

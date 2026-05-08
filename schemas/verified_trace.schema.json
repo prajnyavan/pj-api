@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["trace_id", "run_id", "task", "candidate", "dataset_ready", "verification", "verified_at"],
+  "properties": {
+    "trace_id": {"type": "string"},
+    "run_id": {"type": "string"},
+    "task": {"type": "object"},
+    "candidate": {"type": "object"},
+    "dataset_ready": {"const": true},
+    "verification": {
+      "type": "object",
+      "required": ["tests_passed", "build_passed", "lint_passed"],
+      "properties": {
+        "tests_passed": {"type": "boolean"},
+        "build_passed": {"type": "boolean"},
+        "lint_passed": {"type": "boolean"}
+      }
+    },
+    "verified_at": {"type": "string"}
+  }
+}

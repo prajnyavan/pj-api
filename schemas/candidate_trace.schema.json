@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["trace_id", "run_id", "worker", "task", "candidate", "dataset_ready", "created_at"],
+  "properties": {
+    "trace_id": {"type": "string"},
+    "run_id": {"type": "string"},
+    "worker": {"type": "string"},
+    "task": {"type": "object"},
+    "candidate": {
+      "type": "object",
+      "required": ["patch_diff", "commands_run", "test_logs"],
+      "properties": {
+        "patch_diff": {"type": "string"},
+        "patch_path": {"type": "string"},
+        "commands_run": {"type": "array"},
+        "test_logs": {"type": "string"},
+        "notes": {"type": "string"}
+      }
+    },
+    "dataset_ready": {"const": false},
+    "created_at": {"type": "string"}
+  }
+}

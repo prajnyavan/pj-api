@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["trace_id", "task_id", "patch_path", "commands_run_path", "test_logs_path", "dataset_ready"],
+  "properties": {
+    "trace_id": {"type": "string"},
+    "task_id": {"type": "string"},
+    "patch_path": {"type": "string"},
+    "commands_run_path": {"type": "string"},
+    "test_logs_path": {"type": "string"},
+    "dataset_ready": {"const": false}
+  }
+}
