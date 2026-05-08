@@ -7,7 +7,6 @@ import json
 import subprocess
 from pathlib import Path
 
-
 QUEUE = Path("tasks/tasks_queue.jsonl")
 REQUIRED_FIELDS = {
     "task_id",

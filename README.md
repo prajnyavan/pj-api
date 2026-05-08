@@ -1,5 +1,23 @@
 # SKB Coding Data Factory
 
+## PJ API Seed Repo
+
+This repository is the first grounded seed project for the SKB Coding Data Factory. It contains a small FastAPI app with real source files, tests, lint configuration, and Docker build metadata.
+
+Run the API checks from the repository root:
+
+```bash
+pytest
+python -m compileall app
+ruff check .
+```
+
+Run the development server:
+
+```bash
+uvicorn app.main:app --reload
+```
+
 ## Generate Starter Task Queue
 
 Run the deterministic generator from the repository root:

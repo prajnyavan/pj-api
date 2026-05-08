@@ -9,7 +9,6 @@ import random
 from pathlib import Path
 from typing import Any
 
-
 SEED = 20260508
 OUTPUT_PATH = Path("tasks/tasks_queue.jsonl")
 
@@ -259,7 +258,7 @@ def bug_description(domain: str, area: str) -> str:
 
 
 def stable_commit(repo_name: str) -> str:
-    return hashlib.sha1(f"{SEED}:{repo_name}".encode("utf-8")).hexdigest()
+    return hashlib.sha1(f"{SEED}:{repo_name}".encode()).hexdigest()
 
 
 def command_set(language: str, framework: str) -> tuple[str, str, str]:
