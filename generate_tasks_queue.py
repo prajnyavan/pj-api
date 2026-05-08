@@ -86,6 +86,59 @@ REACT_AREAS = [
     ("saved view selector", ["src/components/SavedViews.tsx"]),
 ]
 
+REACT_FAILURES = {
+    "filter state": (
+        "Clearing one filter currently clears every active filter.",
+        "Clearing one filter should preserve unrelated filters.",
+        "FilterPanel preserves unrelated filters when one filter is cleared",
+    ),
+    "pagination controls": (
+        "Clicking Next on the last page still increments the page index.",
+        "Next should be disabled at the last page and keep the current page unchanged.",
+        "Pagination does not advance past the final page",
+    ),
+    "form validation": (
+        "Submitting a form with whitespace-only required fields is accepted.",
+        "Whitespace-only values should be treated as empty and show the existing validation message.",
+        "EditForm rejects whitespace-only required fields",
+    ),
+    "empty-state rendering": (
+        "The empty state flashes while data is still loading.",
+        "The empty state should render only after loading completes with zero rows.",
+        "EmptyState is hidden while the list is loading",
+    ),
+    "date range picker": (
+        "Selecting an end date before the start date leaves the range in an invalid state.",
+        "The picker should reject the invalid end date and keep the previous valid range.",
+        "DateRangePicker keeps the previous range when end date is invalid",
+    ),
+    "optimistic update rollback": (
+        "A failed optimistic mutation leaves the stale optimistic item in the list.",
+        "A failed mutation should roll the UI back to the server-confirmed state.",
+        "useOptimisticMutation rolls back failed updates",
+    ),
+    "route parameter handling": (
+        "Opening a details route with a URL-encoded id requests the encoded value literally.",
+        "The route should decode the id before passing it to the API client.",
+        "details route decodes encoded ids before loading",
+    ),
+    "table sort toggling": (
+        "Clicking the active sort column never cycles back to an unsorted state.",
+        "The third click should clear sorting and restore the default row order.",
+        "DataTable cycles sort direction back to unsorted",
+    ),
+    "toast error display": (
+        "API errors with a nested message render as a generic unknown error.",
+        "The toast should show the nested server message when it is available.",
+        "ToastHost displays nested API error messages",
+    ),
+    "saved view selector": (
+        "Deleting the active saved view leaves the removed view selected.",
+        "After deletion, the selector should fall back to the default view.",
+        "SavedViews selects default after deleting the active view",
+    ),
+}
+
 FASTAPI_AREAS = [
     ("request validation", ["app/routers/items.py", "app/schemas.py"]),
     ("pagination metadata", ["app/routers/listing.py", "app/services/pagination.py"]),
@@ -99,13 +152,66 @@ FASTAPI_AREAS = [
     ("search query parsing", ["app/services/search.py"]),
 ]
 
+FASTAPI_FAILURES = {
+    "request validation": (
+        "Requests with an empty `name` field are accepted and later fail in the service layer.",
+        "The endpoint should return a 422 validation response before calling the service.",
+        "test_create_item_rejects_empty_name",
+    ),
+    "pagination metadata": (
+        "The `has_next` metadata is false when the current page is exactly full.",
+        "`has_next` should be true when more rows exist after the current page.",
+        "test_list_response_sets_has_next_for_full_page",
+    ),
+    "authorization guard": (
+        "Users without the admin role can reach one admin-only route.",
+        "The dependency should reject non-admin users with 403.",
+        "test_admin_route_rejects_non_admin_user",
+    ),
+    "background job scheduling": (
+        "Retry jobs are scheduled immediately even when a future `run_at` is provided.",
+        "The scheduler should honor the requested `run_at` timestamp.",
+        "test_retry_job_uses_requested_run_at",
+    ),
+    "database transaction handling": (
+        "A repository method commits after the first write and leaves partial data after the second write fails.",
+        "The method should commit only after all writes succeed and roll back on failure.",
+        "test_create_order_rolls_back_partial_write",
+    ),
+    "HTTP error mapping": (
+        "Known service exceptions are returned as 500 responses.",
+        "Known service exceptions should map to their documented HTTP status codes.",
+        "test_known_service_error_maps_to_status_code",
+    ),
+    "cache invalidation": (
+        "Updating a record leaves the stale cached detail response in place.",
+        "The update path should invalidate the cached detail key for that record.",
+        "test_update_invalidates_detail_cache",
+    ),
+    "webhook signature parsing": (
+        "Webhook signatures with extra spaces are rejected before normalization.",
+        "The parser should trim signature segments before verification.",
+        "test_webhook_signature_parser_trims_segments",
+    ),
+    "timezone normalization": (
+        "Naive datetimes are stored as local time instead of normalized UTC.",
+        "Naive datetimes should be interpreted with the configured default timezone and stored as UTC.",
+        "test_normalize_naive_datetime_to_utc",
+    ),
+    "search query parsing": (
+        "Quoted search phrases are split into separate tokens.",
+        "Quoted phrases should stay grouped as one search term.",
+        "test_search_parser_preserves_quoted_phrases",
+    ),
+}
+
 TEST_AREAS = [
-    ("cover a React form regression", "TypeScript", "React", ["src/components/EditForm.test.tsx"]),
-    ("add tests for a custom hook edge case", "TypeScript", "React", ["src/hooks/useFilters.test.ts"]),
-    ("cover FastAPI validation errors", "Python", "FastAPI", ["tests/test_validation.py"]),
-    ("add repository transaction tests", "Python", "pytest", ["tests/test_repositories.py"]),
-    ("cover CLI argument parsing", "Python", "pytest", ["tests/test_cli.py"]),
-    ("add component accessibility assertions", "TypeScript", "React", ["src/components/DataTable.test.tsx"]),
+    ("cover a React form regression", "TypeScript", "React", ["src/components/EditForm.test.tsx"], "EditForm rejects whitespace-only required fields"),
+    ("add tests for a custom hook edge case", "TypeScript", "React", ["src/hooks/useFilters.test.ts"], "useFilters preserves unrelated filter state"),
+    ("cover FastAPI validation errors", "Python", "FastAPI", ["tests/test_validation.py"], "test_create_item_rejects_empty_name"),
+    ("add repository transaction tests", "Python", "pytest", ["tests/test_repositories.py"], "test_create_order_rolls_back_partial_write"),
+    ("cover CLI argument parsing", "Python", "pytest", ["tests/test_cli.py"], "test_cli_rejects_invalid_output_format"),
+    ("add component accessibility assertions", "TypeScript", "React", ["src/components/DataTable.test.tsx"], "DataTable exposes sort state to assistive technology"),
 ]
 
 REFACTOR_AREAS = [
@@ -142,6 +248,16 @@ DOC_TO_CODE_AREAS = [
 ]
 
 
+def bug_description(domain: str, area: str) -> str:
+    failures = REACT_FAILURES if domain == "react" else FASTAPI_FAILURES
+    actual, expected, test_name = failures[area]
+    return (
+        f"Fix {area}. Actual behavior: {actual} Expected behavior: {expected} "
+        f"Existing failing test: `{test_name}`. Keep the patch focused on the listed files and leave verification "
+        "to the configured commands."
+    )
+
+
 def stable_commit(repo_name: str) -> str:
     return hashlib.sha1(f"{SEED}:{repo_name}".encode("utf-8")).hexdigest()
 
@@ -149,8 +265,12 @@ def stable_commit(repo_name: str) -> str:
 def command_set(language: str, framework: str) -> tuple[str, str, str]:
     if language == "TypeScript" or framework == "React":
         return ("npm test -- --runInBand", "npm run build", "npm run lint")
-    if framework in {"Docker", "Docker Compose", "GitHub Actions"}:
-        return ("npm test", "docker build .", "npm run lint && ruff check .")
+    if framework == "Docker":
+        return ("docker build .", "docker build .", "hadolint Dockerfile || true")
+    if framework == "Docker Compose":
+        return ("docker compose config", "docker compose build", "yamllint docker-compose.yml || true")
+    if framework == "GitHub Actions":
+        return ("yamllint .github/workflows || true", "docker build .", "yamllint .github/workflows || true")
     return ("pytest", "python -m compileall app tests", "ruff check . && mypy app")
 
 
@@ -204,28 +324,21 @@ def generate_tasks() -> list[dict[str, Any]]:
     for _ in range(CATEGORY_COUNTS["react_typescript_bug_fix"]):
         area, files = rng.choice(REACT_AREAS)
         repo = rng.choice(REPOS["react"])
-        description = (
-            f"Fix a small React/TypeScript bug in {area}. Reproduce the failing behavior from the existing "
-            "tests or UI state, update only the minimal implementation files, and leave verification to the "
-            "configured commands."
-        )
+        description = bug_description("react", area)
         tasks.append(make_task(len(tasks) + 1, "bug_fix", repo, "TypeScript", "React", rng.choice(DIFFICULTIES), description, files, rng))
 
     for _ in range(CATEGORY_COUNTS["python_fastapi_bug_fix"]):
         area, files = rng.choice(FASTAPI_AREAS)
         repo = rng.choice(REPOS["fastapi"])
-        description = (
-            f"Fix a focused Python/FastAPI bug in {area}. Preserve the public API contract, avoid broad rewrites, "
-            "and keep the change suitable for independent patch verification."
-        )
+        description = bug_description("fastapi", area)
         tasks.append(make_task(len(tasks) + 1, "bug_fix", repo, "Python", "FastAPI", rng.choice(DIFFICULTIES), description, files, rng))
 
     for _ in range(CATEGORY_COUNTS["test_writing"]):
-        area, language, framework, files = rng.choice(TEST_AREAS)
+        area, language, framework, files, test_name = rng.choice(TEST_AREAS)
         repo = rng.choice(REPOS["react"] if language == "TypeScript" else REPOS["fastapi"])
         description = (
-            f"Write focused tests to {area}. Do not change production behavior except for tiny testability seams "
-            "that are strictly necessary and already consistent with the codebase."
+            f"Write focused tests to {area}. Target test name: `{test_name}`. Capture the expected behavior before "
+            "any production fix, avoid broad fixture rewrites, and do not include solved implementation changes."
         )
         tasks.append(make_task(len(tasks) + 1, "test_writing", repo, language, framework, rng.choice(["easy", "medium", "medium"]), description, files, rng))
 

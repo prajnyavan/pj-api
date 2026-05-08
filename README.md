@@ -27,3 +27,23 @@ The generated mix is:
 - 50 documentation-to-code tasks
 
 Generation uses a fixed seed so repeated runs produce the same queue.
+
+## Validate Against Local Repositories
+
+After the referenced repositories are available under `repos/`, validate that each task points at a real repository, commit, and expected file:
+
+```bash
+python3 tasks/validate_tasks_queue.py
+```
+
+The validator checks JSONL parsing, duplicate ids, required fields, forbidden solved-data fields, `repo_path`, `base_commit`, and `expected_files`.
+
+## Create A 20-Task Pilot
+
+Before solving at scale, create a small pilot queue:
+
+```bash
+head -n 20 tasks/tasks_queue.jsonl > tasks/pilot_20.jsonl
+```
+
+Use the pilot for the first solve-and-verify loop. Keep `dataset_ready` unset until independent verification passes.
