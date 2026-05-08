@@ -77,6 +77,14 @@ def apply_patch(worktree: Path, patch_text: str) -> tuple[bool, str]:
     return True, "ok"
 
 
+def run_tests_three_times(command: str, worktree: Path) -> dict[str, Any]:
+    runs = [run_command(command, worktree) for _ in range(3)]
+    return {
+        "passed": all(run["passed"] for run in runs),
+        "runs": runs,
+    }
+
+
 def verify_candidate_trace(candidate_path: Path, verified_dir: Path, rejected_dir: Path) -> dict[str, Any]:
     trace = json.loads(candidate_path.read_text(encoding="utf-8"))
     if trace.get("dataset_ready") is True:
@@ -124,7 +132,7 @@ def verify_candidate_trace(candidate_path: Path, verified_dir: Path, rejected_di
 
         build = run_command(task["build_command"], worktree)
         lint = run_command(task["lint_command"], worktree)
-        tests = run_command(task["test_command"], worktree)
+        tests = run_tests_three_times(task["test_command"], worktree)
         trace["verification"] = {
             "build": build,
             "lint": lint,

@@ -15,7 +15,7 @@ def load_json_files(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
     rows = []
-    for item in sorted(path.glob("*.json")):
+    for item in sorted(path.rglob("*.json")):
         rows.append(json.loads(item.read_text(encoding="utf-8")))
     return rows
 
