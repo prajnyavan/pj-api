@@ -8,8 +8,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from verifier.command_runner import EXECUTION_MODE, run_command
 from verifier.dependency_guard import validate_dependencies
-from verifier.docker_runner import run_command
 from verifier.patch_integrity import validate_patch_scope
 from verifier.secret_scanner import scan_for_secrets
 
@@ -29,6 +29,7 @@ def reject(trace: dict[str, Any], reason: str, rejected_dir: Path, candidate_pat
     trace["dataset_ready"] = False
     trace["verified_at"] = utc_now()
     trace["verification"] = {
+        "execution_mode": EXECUTION_MODE,
         "tests_passed": False,
         "build_passed": False,
         "lint_passed": False,
@@ -77,8 +78,12 @@ def apply_patch(worktree: Path, patch_text: str) -> tuple[bool, str]:
     return True, "ok"
 
 
-def run_tests_three_times(command: str, worktree: Path) -> dict[str, Any]:
-    runs = [run_command(command, worktree) for _ in range(3)]
+def task_approved_commands(task: dict[str, Any]) -> set[str]:
+    return {task["build_command"], task["lint_command"], task["test_command"]}
+
+
+def run_tests_three_times(command: str, worktree: Path, approved_commands: set[str]) -> dict[str, Any]:
+    runs = [run_command(command, worktree, approved_commands=approved_commands) for _ in range(3)]
     return {
         "passed": all(run["passed"] for run in runs),
         "runs": runs,
@@ -130,10 +135,12 @@ def verify_candidate_trace(candidate_path: Path, verified_dir: Path, rejected_di
         if not patch_ok:
             return reject(trace, "patch_did_not_apply", rejected_dir, candidate_path)
 
-        build = run_command(task["build_command"], worktree)
-        lint = run_command(task["lint_command"], worktree)
-        tests = run_tests_three_times(task["test_command"], worktree)
+        approved_commands = task_approved_commands(task)
+        build = run_command(task["build_command"], worktree, approved_commands=approved_commands)
+        lint = run_command(task["lint_command"], worktree, approved_commands=approved_commands)
+        tests = run_tests_three_times(task["test_command"], worktree, approved_commands)
         trace["verification"] = {
+            "execution_mode": EXECUTION_MODE,
             "build": build,
             "lint": lint,
             "tests": tests,
